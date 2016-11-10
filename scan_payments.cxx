@@ -8,6 +8,7 @@
 // #include <TStopwatch.h>
 // #include <ctime>
 #include <chrono>
+#include <fstream>
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -19,6 +20,7 @@ struct transaction {
   int from;
   int to;
   float price;
+  int depth=0;
   transaction( std::string t, int f, int to_, float p):
     time(t),
     from(f),
@@ -81,7 +83,9 @@ struct user {
     if(this->network.size()==0) this->build_network();
     if(u->network.size()==0) u->build_network();
     for(user* v : this->network){
-      if(u->network.find(v)!=this->network.end()) return true;
+      if(u->network.find(v)!=this->network.end()) {
+	return true;
+      }
     }
     return false;
   }
@@ -104,10 +108,8 @@ user* get_user( int id, user_map& users, bool make_new=false){
 
   if(make_new) {
     user* u = new user(id);
-    if(users.size()<id)
-    while(users.size()<id) users.push_back(0);
+    while(users.size()<=id) users.push_back(0);
     users[id]=u;
-    //cout << users.size() << " " << id << endl;
     return u;
   }
 
@@ -120,14 +122,14 @@ bool readLine(FILE* in, const char* expr, char time[], int& from, int& to, float
   static const int buffsize=65536;
   static char buff[buffsize];
 
-    fscanf(in, "%20[^,], %i, %i, %f", time,  &from, &to, &price);
-    if(std::string(time).substr(0,4)!="2016") {
-      cout << "Error " << time << endl;
-      return false;
-    }
-
-    fgets(buff, buffsize, in);
-    return true;
+  int converted=fscanf(in, "%20[^,], %i, %i, %f", time,  &from, &to, &price);
+  if(std::string(time).substr(0,4)!="2016"||converted!=4) {
+    if(!feof(in)) cout << "Error " << time << " :: " << converted << " :: from, to, price " << from << ", " << to << ", " << price << endl;
+    return false;
+  }
+  
+  fgets(buff, buffsize, in);
+  return true;
 }
 
 int main(int argc, char** argv){
@@ -184,7 +186,10 @@ int main(int argc, char** argv){
     if(counter%100000==0) {
       cout << counter << endl;
     }
-    if(!readLine(in, "%20[^,], %i, %i, %f", time,  f, t, p)) return 0;
+    if(!readLine(in, "%20[^,], %i, %i, %f", time,  f, t, p)) {
+      if(feof(in)) break;
+      return 0;
+    }
 
     transaction* trans = new transaction(time, f, t, p);
     transactions.push_back(trans);
@@ -205,11 +210,19 @@ int main(int argc, char** argv){
   double transaction_times[nDepth] = {0.};
   double transaction_max_time[nDepth] = {0.};
 
+  std::vector<transaction*> transaction_stream;
+
   counter=0;
   while(!feof(stream) /*&&counter<10000*/) {
     counter++;
     if(counter%100000==0) cout << counter << endl;
-    if(!readLine(stream, "%20[^,], %i, %i, %f", time,  f, t, p)) return 0;
+    if(!readLine(stream, "%20[^,], %i, %i, %f", time,  f, t, p)) {
+      if(feof(in)) break;
+      return 0;
+    }
+
+    transaction* trans = new transaction(time, f, t, p);
+    transaction_stream.push_back(trans);
 
     user* user_from = get_user(f, users);
     user* user_to = get_user(t, users);
@@ -248,9 +261,10 @@ int main(int argc, char** argv){
     //watch.Stop();
     stop=Clock::now();
 
+    trans->depth=depth;
     //double time=watch.RealTime();
     //    double time=(clock()-watch)/ (double) CLOCKS_PER_SEC;
-    double time= std::chrono::duration_cast<std::chrono::duration<double>>(start-stop).count();
+    double time= std::chrono::duration_cast<std::chrono::duration<double>>(stop-start).count();
     transaction_times[depth]+=time;
     if(time>transaction_max_time[depth]) transaction_max_time[depth]=time;
 
@@ -277,6 +291,13 @@ int main(int argc, char** argv){
   //  cout << "Transaction Depth: " << transaction_depth[0] << " " << transaction_depth[1] << " " << transaction_depth[2] << " " << transaction_depth[3] << endl;
   for(int i = 0; i != nDepth; ++i){
     cout << "Transaction_Depth: " << i << " " << transaction_depth[i] << " ave time: " << transaction_times[i]/transaction_depth[i] << " max time: " << transaction_max_time[i] << endl;
+  }
+
+  fstream fout("out_cpp.txt", std::ios::out);
+  int ientry =0;
+  for(transaction* t : transaction_stream) {
+    fout << ientry << " "<< t->depth << endl;
+    ientry++;
   }
 
 }

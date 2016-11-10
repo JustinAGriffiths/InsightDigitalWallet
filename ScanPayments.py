@@ -96,9 +96,12 @@ f=open('stream_payment.csv', 'r')
 
 counter=0
 depth={}
-def add_depth(msg):
+transaction_list=[]
+def add_depth(msg, val):
     if msg in depth: depth[msg]+=1
     else : depth[msg]=1
+    transaction_list.append([val, len(transaction_list)]);
+
     pass
 
 for line in f:
@@ -117,7 +120,7 @@ for line in f:
 
     if( (id_from not in users) or (id_to not in users) ):
         #print id_from, id_to, len(users)
-        add_depth('new user')
+        add_depth('new user', 5)
         decision=True
         continue
 
@@ -125,13 +128,13 @@ for line in f:
     user_to=users[id_to]
 
     if(user_to in user_from.friends):
-        add_depth('payee friend')
+        add_depth('payee friend', 1)
         decision=True
         continue
 
     for friend in user_from.friends :
         if user_to in friend.friends :
-            add_depth('payee friend 2')
+            add_depth('payee friend 2', 2)
             decision=True
             break
         pass
@@ -140,7 +143,7 @@ for line in f:
 
     if(user_from.build_network(user_to.friends)):
         decision=True
-        add_depth('payee friend 3')
+        add_depth('payee friend 3', 3)
         user_from.network.clear()
         pass
 
@@ -149,13 +152,13 @@ for line in f:
    
     if(user_to.build_network(user_from.network)):
         decision=True
-        add_depth('payee friend 4')        
+        add_depth('payee friend 4', 4)        
         pass
 
     user_from.network.clear()
     user_to.network.clear()
 
-    if decision==False : add_depth('WARNING')
+    if decision==False : add_depth('WARNING', 0)
 
     pass
 
@@ -166,8 +169,9 @@ for key,value in sorted(depth.iteritems()):
     print key.ljust(20, ' '), ' : ', value
 
 
-
-
+fout=open('out_py.txt', 'w')
+for l in transaction_list: fout.write('%i %i\n' %(l[1],l[0]))
+fout.close()
 
     
 
