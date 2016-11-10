@@ -1,19 +1,14 @@
 #!/bin/bash
 
-if [ ! -f batch_payment.csv ]; then
-    wget https://github.com/InsightDataScience/digital-wallet/blob/master/paymo_input/batch_payment.txt
+if [ ! -f paymo_input/batch_payment.csv ]; then
+    wget https://github.com/InsightDataScience/digital-wallet/blob/master/paymo_input/batch_payment.txt paymo_input/
 fi
 
-if [ ! -f stream_payment.csv ]; then
-    wget https://github.com/InsightDataScience/digital-wallet/blob/master/paymo_input/stream_payment.txt
+if [ ! -f paymo_input/stream_payment.csv ]; then
+    wget https://github.com/InsightDataScience/digital-wallet/blob/master/paymo_input/stream_payment.txt paymo_input/
 fi
 
-imp="scan_payments.cxx"
-if [[ $1 ]]; then imp="ScanPayments.py"; fi
 
-if [ "$imp" == "scan_payments.cxx" ]; then
-    g++ scan_payments.cxx -std=c++11 -fpermissive -O2 -o scan_payments 
-    time ./scan_payments
-else
-    time python $imp
-fi
+echo 'Running src/antifraud.py'
+python src/antifraud.py -h
+time python src/antifraud.py $@
