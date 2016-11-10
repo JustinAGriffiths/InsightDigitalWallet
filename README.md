@@ -14,11 +14,13 @@ where A is friends with B, B with C, C with D, ...
 ### Strategy
 
 The strategy is to :
+```
   1) check if payee is registered, e.g. has made a transaction
   2) check if payee and payer are friends (1st gen)
   3) check if payee is friends with one of the payer's friends (2nd gen)
   4) check if a friend of the payee is in the 2nd generation network of the payor (friend of friends) (3rd gen)
   5) check if the payee's 2nd generation network has an intersection with the payor's 2nd generation network
+```
 
 Data structure is simple c or python struct:
 
