@@ -4,8 +4,13 @@
 #include <iostream>
 #include <cstdio>
 #include <unordered_set>
-#include <TSystem.h>
-#include <TStopwatch.h>
+// #include <TSystem.h>
+// #include <TStopwatch.h>
+// #include <ctime>
+#include <chrono>
+
+typedef std::chrono::high_resolution_clock Clock;
+
 
 using namespace std;
 
@@ -23,10 +28,13 @@ struct transaction {
 
 
 class user;
-template<>
-struct hash<user*> {
-  size_t operator()(const user* k);
-};
+namespace std {
+  template<>
+  struct hash<user*> {
+    size_t operator()(const user* k);
+  };
+}
+
 typedef unordered_set<user*, hash<user*> > user_list;
 //typedef set<user*> user_list;
 
@@ -80,7 +88,7 @@ struct user {
 
 };
 
-size_t hash<user*>::operator()(const user* k){
+size_t std::hash<user*>::operator()(const user* k){
   return k->id;
 }
 
@@ -125,7 +133,9 @@ bool readLine(FILE* in, const char* expr, char time[], int& from, int& to, float
 int main(int argc, char** argv){
 
   //profile
-  TStopwatch watch;
+  //  TStopwatch watch;
+  auto start = Clock::now();
+  auto stop = start;
 
   std::string batch_file="batch_payment.csv";
   std::string stream_file="stream_payment.csv";
@@ -204,7 +214,9 @@ int main(int argc, char** argv){
     user* user_from = get_user(f, users);
     user* user_to = get_user(t, users);
 
-    watch.Start();
+    //watch.Start();
+    //    watch=clock();
+    start=Clock::now();
     int depth=0;
     if(!user_to) {
       depth=5;
@@ -233,9 +245,12 @@ int main(int argc, char** argv){
 	user_to->network.clear();
       }      
     }
-    watch.Stop();
-    
-    double time=watch.RealTime();
+    //watch.Stop();
+    stop=Clock::now();
+
+    //double time=watch.RealTime();
+    //    double time=(clock()-watch)/ (double) CLOCKS_PER_SEC;
+    double time= std::chrono::duration_cast<std::chrono::duration<double>>(start-stop).count();
     transaction_times[depth]+=time;
     if(time>transaction_max_time[depth]) transaction_max_time[depth]=time;
 

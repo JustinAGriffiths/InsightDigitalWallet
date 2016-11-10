@@ -12,7 +12,7 @@ imp="scan_payments.cxx"
 if [[ $1 ]]; then imp="ScanPayments.py"; fi
 
 if [ "$imp" == "scan_payments.cxx" ]; then
-    g++ scan_payments.cxx -std=c++11 -fpermissive -O2 -o scan_payments scan_payments.cxx
+    g++ scan_payments.cxx -std=c++11 -fpermissive -O2 -o scan_payments 
     time ./scan_payments
 else
     time python $imp
