@@ -4,11 +4,9 @@
 #include <iostream>
 #include <cstdio>
 #include <unordered_set>
-// #include <TSystem.h>
-// #include <TStopwatch.h>
-// #include <ctime>
 #include <chrono>
 #include <fstream>
+#include <algorithm>
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -21,7 +19,7 @@ struct transaction {
   int to;
   float price;
   int depth=0;
-  transaction( std::string t, int f, int to_, float p):
+  transaction( cosnt std::string& t, int f, int to_, float p):
     time(t),
     from(f),
     to(to_),
@@ -37,13 +35,43 @@ namespace std {
   };
 }
 
+#ifdef USE_HASH_MAP
 typedef unordered_set<user*, hash<user*> > user_list;
-//typedef set<user*> user_list;
+#else
+typedef set<user*> user_list; //has set_intersection
+#endif
 
+bool check_intersection(user_list &a, user_list &b){
+//   static vector<user*> intersection;
+//   intersection.clear();
+//   std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(intersection));
+//   if(intersection.size()>0) return true;
+//   return false;
+
+
+  user_list::const_iterator first1=a.begin();
+  user_list::const_iterator last1=a.end();
+  user_list::const_iterator first2=b.begin();
+  user_list::const_iterator last2=b.end();
+
+  while (first1 != last1 && first2 != last2) {
+    if (*first1 < *first2) {
+      ++first1;
+    } else  {
+      if (!(*first2 < *first1)) {
+	//*d_first++ = *first1++;
+	return true;
+      }
+      ++first2;
+    }
+  }
+  return false;
+
+}
 
 struct user {
   vector<transaction*> transactions;
-  
+
   user_list friends;
   user_list network;
   int id;
@@ -57,6 +85,8 @@ struct user {
   bool build_network(user_list& friends){
     network.clear();
     for(user* u : this->friends){
+
+#ifdef USE_HASH_MAP
       for(user* v : u->friends){
 	if(friends.find(v)!=friends.end()) {
 	  network.clear();
@@ -64,6 +94,13 @@ struct user {
 	}
 	network.insert(v);
       }
+#else
+      if(check_intersection(u->friends, friends)) {
+	network.clear();
+	return true;
+      }
+      network.insert(u->friends.begin(), u->friends.end());
+#endif
     }    
     return false;
   }
@@ -139,8 +176,8 @@ int main(int argc, char** argv){
   auto start = Clock::now();
   auto stop = start;
 
-  std::string batch_file="batch_payment.csv";
-  std::string stream_file="stream_payment.csv";
+  std::string batch_file= "paymo_input/batch_payment.csv";
+  std::string stream_file="paymo_input/stream_payment.csv";
   bool update_friends=false;
   //a new user's first payment is rejected, but is added as friend
   //in the real world, this would only happen if payer verified new user
@@ -242,12 +279,17 @@ int main(int argc, char** argv){
     }
     else {
       //build friend of friends
+#ifdef USE_HASH_MAP
       for(user* u : user_from->friends){
 	if( u->friends.find(user_to) != u->friends.end() ) {
 	  depth=2;
 	  break;
 	}
       }
+#else
+      if(check_intersection(user_from->friends, user_to->friends)) depth=2 ;
+#endif
+
       if(depth==0){
 	if(user_from->build_network(user_to->friends)) depth=3;
 	if(depth==0){

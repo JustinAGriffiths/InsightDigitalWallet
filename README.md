@@ -37,11 +37,6 @@ destroyed subsequently.  As second generation networs are built, checks are made
 the network construction is abandoned since a match was made.  Keeping the 2nd gen networks around is too memory intensive--
 estimate O(100M) users would be in the sum of all networks when there are O(80k) users.
 
-Output is not as described here:
-
-https://github.com/InsightDataScience/digital-wallet/blob/master/README.md
-
-since this was just for fun :)
 
 ## Usage
 
@@ -53,5 +48,30 @@ wget https://github.com/InsightDataScience/digital-wallet/blob/master/paymo_inpu
 
 to test do:
 
-./run.sh [implementation] #implemntation is either scan_payments.cxx or ScanPayments.py, default is the cxx
+./run.sh [args]
+
+possible args:
+./run.sh -h :
+
+Verify Payments
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a [ADD_AS_FRIEND], --add-as-friend [ADD_AS_FRIEND]
+                        while looking at stream, add as friends if transaction
+                        is verified, can help reduce time for future searches
+  -n [ADD_NEW_USER], --add-new-user [ADD_NEW_USER]
+                        a new user is unverified for the first encounter, but
+                        the payer friends them, so they are a part of the
+                        network for future transactions
+  -q [QUIET], --quiet [QUIET]
+                        do a simple analysis on the users
+  -d [DO_DIAGNOSTIC], --diagnostic [DO_DIAGNOSTIC]
+                        do timing diagnostics
+  -i INFILES [INFILES ...], --in-file INFILES [INFILES ...]
+                        input batch file[s]
+  -s STREAMFILES [STREAMFILES ...], --stream-file STREAMFILES [STREAMFILES ...]
+                        input stream file[s]
+
+
 ```

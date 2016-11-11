@@ -1,10 +1,12 @@
 #!/bin/env python
 
+#________________________________________
 def usage():
     """
     
     """
 
+#________________________________________
 class user() :
     def __init__(self, i) :
         self.ID=i
@@ -43,6 +45,7 @@ class user() :
     
 
 
+#________________________________________
 users={}
 def get_user(ID, create_new=False):
     if ID in users: return users[ID]
@@ -56,6 +59,7 @@ depth={}
 transaction_list=[]
 fraudulent_users={}
 
+#________________________________________
 def add_depth(msg, val, del_time, fraudster=-1):
     if msg in depth: 
         l=depth[msg]
@@ -71,6 +75,7 @@ def add_depth(msg, val, del_time, fraudster=-1):
 
 
 
+#________________________________________
 def do_diagnostics():
     fdiagnostic=open('paymo_output/diagnostics.txt', 'w')
     for key,value in sorted(depth.iteritems()):
@@ -114,6 +119,8 @@ def do_diagnostics():
 
     pass
 
+
+#________________________________________
 def main(arg_list):
 
     import argparse
@@ -131,98 +138,108 @@ def main(arg_list):
     parser.add_argument('-d', '--diagnostic',  const=True, default=False, nargs='?',
                         help='do timing diagnostics', dest='do_diagnostic')
 
+    parser.add_argument('-i', '--in-file', default=['paymo_input/batch_payment.csv'], nargs='+',
+                        help='input batch file[s]', dest='infiles')
+    parser.add_argument('-s', '--stream-file', default=['paymo_input/stream_payment.csv'], nargs='+',
+                        help='input stream file[s]', dest='streamfiles')
+
 
     args = parser.parse_args()
 
-    f=open('paymo_input/batch_payment.csv','r')
-
     counter=0
-    for line in f:
-        if(counter==0) : 
-            counter=counter+1
-            continue
-        if(counter%100000==0 and not args.quiet): print counter
-        #if(counter>100000) : break
-        counter=counter+1
-        fields=line.split(',')
-        
-        id_from=int(fields[1])
-        id_to=int(fields[2])
-        user_from=get_user(id_from, True)
-        user_to=get_user(id_to, True)
-        user_from.add_friend(user_to)
-        
-        continue
+    for fname in args.infiles :
+        f=open(fname,'r')
 
+        first_line=True
+        for line in f:
+            if(first_line) : 
+                first_line=False
+                continue
+            if(counter%100000==0 and not args.quiet): print counter
+            #if(counter>100000) : break
+            counter=counter+1
+            fields=line.split(',')
+        
+            id_from=int(fields[1])
+            id_to=int(fields[2])
+            user_from=get_user(id_from, True)
+            user_to=get_user(id_to, True)
+            user_from.add_friend(user_to)
+            
+            continue
+
+        continue
 
     if not args.quiet : print 'Total users=', len(users)
 
-    f=open('paymo_input/stream_payment.csv', 'r')
 
-    counter=0
-    
+    counter=0    
     import time
+    for fname in args.streamfiles:
+        f=open(fname, 'r')
 
-    for line in f:
-        if(counter==0) : 
+        first_line=True
+        for line in f:
+            if(first_line) : 
+                first_line=False
+                continue
+            if(counter%100000==0 and not args.quiet): print counter
+            #if(counter>100000) : break;
             counter=counter+1
-            continue
-        if(counter%100000==0 and not args.quiet): print counter
-        #if(counter>100000) : break;
-        counter=counter+1
-        fields=line.split(',')
+            fields=line.split(',')
 
-        decision=False
+            decision=False
 
-        id_from=int(fields[1])
-        id_to=int(fields[2])
+            id_from=int(fields[1])
+            id_to=int(fields[2])
 
-        start=time.time()
+            start=time.time()
 
-        if(id_from not in users) :
-            add_depth('new user', 5, time.time()-start, fraudster=id_from)
-            if args.add_new_user : get_user(id_from, True)
-            continue
+            if(id_from not in users) :
+                add_depth('new user', 5, time.time()-start, fraudster=id_from)
+                if args.add_new_user : get_user(id_from, True)
+                continue
 
-        if (id_to not in users) :
-            add_depth('new user', 5, time.time()-start, fraudster=id_to)
-            if args.add_new_user : get_user(id_to, True)
-            continue
+            if (id_to not in users) :
+                add_depth('new user', 5, time.time()-start, fraudster=id_to)
+                if args.add_new_user : get_user(id_to, True)
+                continue
 
-        user_from=users[id_from]
-        user_to=users[id_to]
+            user_from=users[id_from]
+            user_to=users[id_to]
 
-        if(user_to in user_from.friends):
-            add_depth('payee friend', 1, time.time()-start)
-            decision=True
-            continue
+            if(user_to in user_from.friends):
+                add_depth('payee friend', 1, time.time()-start)
+                decision=True
+                continue
 
-        if len(user_to.friends & user_from.friends)>0: 
-            add_depth('payee friend 2', 2, time.time()-start)
-            decision=True
-            continue
+            if len(user_to.friends & user_from.friends)>0: 
+                add_depth('payee friend 2', 2, time.time()-start)
+                decision=True
+                continue
 
-        if(user_from.build_network(user_to.friends)):
-            decision=True
-            add_depth('payee friend 3', 3, time.time()-start)
-            user_from.network.clear()
-            continue
+            if(user_from.build_network(user_to.friends)):
+                decision=True
+                add_depth('payee friend 3', 3, time.time()-start)
+                user_from.network.clear()
+                continue
    
-        if(user_to.build_network(user_from.network)):
-            decision=True
-            add_depth('payee friend 4', 4, time.time()-start)        
-            pass
+            if(user_to.build_network(user_from.network)):
+                decision=True
+                add_depth('payee friend 4', 4, time.time()-start)        
+                pass
 
-        user_from.network.clear()
-        user_to.network.clear()
+            user_from.network.clear()
+            user_to.network.clear()
 
-        if decision==False : add_depth('unverified', 0, time.time()-start)
+            if decision==False : add_depth('unverified', 0, time.time()-start)
         
-        if decision==True and args.add_as_friend : user_from.add_friend(user_to)
+            if decision==True and args.add_as_friend : user_from.add_friend(user_to)
 
-        pass
+            continue#loop over file
+        continue#loop over files
 
-
+    
 
     if(args.do_diagnostic) : do_diagnostics()
 
@@ -246,6 +263,7 @@ def main(arg_list):
     fout2.close()
     fout3.close()
 
+#________________________________________
 if __name__ == "__main__":
     import sys
     main(sys.argv[1:])

@@ -9,6 +9,9 @@ if [ ! -f paymo_input/stream_payment.csv ]; then
 fi
 
 
-echo 'Running src/antifraud.py'
 python src/antifraud.py -h
+
+echo ""
+echo 'Running src/antifraud.py'
+
 time python src/antifraud.py $@
