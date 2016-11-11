@@ -1,11 +1,11 @@
 #!/bin/bash
 
 if [ ! -f paymo_input/batch_payment.csv ]; then
-    wget https://github.com/InsightDataScience/digital-wallet/blob/master/paymo_input/batch_payment.txt paymo_input/
+    `cat paymo_input/batch_payment.txt`
 fi
 
 if [ ! -f paymo_input/stream_payment.csv ]; then
-    wget https://github.com/InsightDataScience/digital-wallet/blob/master/paymo_input/stream_payment.txt paymo_input/
+    `cat paymo_input/stream_payment.txt`
 fi
 
 

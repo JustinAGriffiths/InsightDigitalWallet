@@ -1,1 +1,1 @@
-wget https://www.dropbox.com/s/y6fige3w1ohksbd/batch_payment.csv?dl=0 paymo_input/batch_payment.csv
+wget https://www.dropbox.com/s/y6fige3w1ohksbd/batch_payment.csv?dl=0 -O paymo_input/batch_payment.csv
