@@ -7,12 +7,22 @@ def usage():
     """
 
 #________________________________________
+class transaction() :
+    def __init__(self, p1, p2, a):
+        self.payer=p1
+        self.payee=p2
+        self.amount=a
+        
+
+#________________________________________
 class user() :
     def __init__(self, i) :
         self.ID=i
         self.friends=set()
         self.status=0
         self.network=set()
+        self.transactions={}
+        self.pending={}
         pass
 
     def __hash__(self):
@@ -29,8 +39,10 @@ class user() :
 
 
     def add_friend(self, u):        
-        self.friends.add(u)
+        self.friends.add(u)        
+        self.update_pending()
         u.friends.add(self)
+        u.update_pending()
         pass
     
     def build_network(self, flist=set()):
@@ -42,7 +54,28 @@ class user() :
             continue
         return False
 
+    def add_transaction(self, t, u):
+        if u in self.transactions: self.transactions[u].append(t)
+        else : self.transactions[u]=[t]
+        pass
+
+    def add_pending(self, t, u):
+        if u in self.pending: self.pending[u].append(t)
+        else : self.pending[u]=[t]
+        pass
     
+    def update_pending(self):
+        pop=[]
+        for u,l in self.pending.iteritems():
+            if u in self.friends:
+                for t in l : 
+                    self.add_transaction(t, u)
+                    pop.append(u)
+                    continue
+                pass
+            continue
+        for u in pop: self.pending.pop(u)
+
 
 
 #________________________________________
@@ -142,6 +175,10 @@ def main(arg_list):
                         help='input batch file[s]', dest='infiles')
     parser.add_argument('-s', '--stream-file', default=['paymo_input/stream_payment.csv'], nargs='+',
                         help='input stream file[s]', dest='streamfiles')
+#     parser.add_argument('-t', '--track-transactions', const=True, default=False, nargs='?', dest='track_transactions',
+#                         help='keep track of pending approved transactions for users, pending can be approved with subsequent runs -r/--repeat and -a/--add-as-friend and -n --add-new-user')
+    parser.add_argument('-r', '--repeat-stream', default=1, nargs='?', type=int, dest='iterations',
+                        help='run over stream file again, should include with -a/-n/-t')
 
 
     args = parser.parse_args()
@@ -165,9 +202,15 @@ def main(arg_list):
             user_from=get_user(id_from, True)
             user_to=get_user(id_to, True)
             user_from.add_friend(user_to)
+
+
+#             if args.track_transactions :
+#                 t=transaction(user_from, user_to, float(fields[3]))
+#                 user_from.add_transaction(t, user_to)
+#                 user_to.add_transaction(t, user_from)
             
             continue
-
+        f.close()
         continue
 
     if not args.quiet : print 'Total users=', len(users)
@@ -175,71 +218,107 @@ def main(arg_list):
 
     counter=0    
     import time
-    for fname in args.streamfiles:
-        f=open(fname, 'r')
+    for iteration in xrange(0, args.iterations):
+        for fname in args.streamfiles:
+            f=open(fname, 'r')
+            
+            first_line=True
+            for line in f:
+                if(first_line) : 
+                    first_line=False
+                    continue
+                if(counter%100000==0 and not args.quiet): print counter
+                #if(counter>100000) : break;
+                counter=counter+1
+                fields=line.split(',')
 
-        first_line=True
-        for line in f:
-            if(first_line) : 
-                first_line=False
-                continue
-            if(counter%100000==0 and not args.quiet): print counter
-            #if(counter>100000) : break;
-            counter=counter+1
-            fields=line.split(',')
+                decision=False
 
-            decision=False
+                id_from=int(fields[1])
+                id_to=int(fields[2])
+                
+                start=time.time()
 
-            id_from=int(fields[1])
-            id_to=int(fields[2])
+                if(id_from not in users) :
+                    add_depth('new user', 5, time.time()-start, fraudster=id_from)
+                    if args.add_new_user : 
+                        user_from=get_user(id_from, True)
+#                         if args.track_transactions :
+#                             user_to=get_user(id_to, True)
+#                             t=transaction( user_from, user_to, float(fields[3]))
+#                             user_to.add_pending(t, user_from)
+#                             user_from.add_pending(t, user_to)
+#                             pass
+                        pass
+                    continue
 
-            start=time.time()
+                if (id_to not in users) :
+                    add_depth('new user', 5, time.time()-start, fraudster=id_to)
+                    if args.add_new_user : 
+                        user_to=get_user(id_to, True)
+#                         if args.track_transactions :
+#                             user_from=get_user(id_from, True)
+#                             t=transaction( user_from, user_to, float(fields[3]))
+#                             user_to.add_pending(t, user_from)
+#                             user_from.add_pending(t, user_to)
+#                             pass
+                        pass                        
+                    continue
 
-            if(id_from not in users) :
-                add_depth('new user', 5, time.time()-start, fraudster=id_from)
-                if args.add_new_user : get_user(id_from, True)
-                continue
+                user_from=users[id_from]
+                user_to=users[id_to]
 
-            if (id_to not in users) :
-                add_depth('new user', 5, time.time()-start, fraudster=id_to)
-                if args.add_new_user : get_user(id_to, True)
-                continue
+                if(user_to in user_from.friends):
+                    add_depth('payee friend', 1, time.time()-start)
+                    decision=True
+                    continue
 
-            user_from=users[id_from]
-            user_to=users[id_to]
+                if len(user_to.friends & user_from.friends)>0: 
+                    add_depth('payee friend 2', 2, time.time()-start)
+                    decision=True
+                    continue
 
-            if(user_to in user_from.friends):
-                add_depth('payee friend', 1, time.time()-start)
-                decision=True
-                continue
-
-            if len(user_to.friends & user_from.friends)>0: 
-                add_depth('payee friend 2', 2, time.time()-start)
-                decision=True
-                continue
-
-            if(user_from.build_network(user_to.friends)):
-                decision=True
-                add_depth('payee friend 3', 3, time.time()-start)
-                user_from.network.clear()
-                continue
+                if(user_from.build_network(user_to.friends)):
+                    decision=True
+                    add_depth('payee friend 3', 3, time.time()-start)
+                    user_from.network.clear()
+                    continue
    
-            if(user_to.build_network(user_from.network)):
-                decision=True
-                add_depth('payee friend 4', 4, time.time()-start)        
-                pass
+                if(user_to.build_network(user_from.network)):
+                    decision=True
+                    add_depth('payee friend 4', 4, time.time()-start)        
+                    pass
 
-            user_from.network.clear()
-            user_to.network.clear()
+                user_from.network.clear()
+                user_to.network.clear()
 
-            if decision==False : add_depth('unverified', 0, time.time()-start)
+                if decision==False : add_depth('unverified', 0, time.time()-start)
         
-            if decision==True and args.add_as_friend : user_from.add_friend(user_to)
+                if decision==True and args.add_as_friend : user_from.add_friend(user_to)
 
-            continue#loop over file
-        continue#loop over files
+#                 if args.track_transactions:
+#                     t=transaction(user_from, user_to, float(fields[3]))
+#                     if decision : 
+#                         user_from.add_transaction(t, user_to)
+#                         user_to.add_transaction(t, user_from)
+#                     else :
+#                         user_from.add_pending(t, user_to)
+#                         user_to.add_pending(t, user_from)
+#                     pass
+
+                continue#loop over file
+            f.close()
+            continue#loop over files
+        continue#loop over iterations
 
     
+
+#     if(args.track_transactions):
+#         for u in users :
+#             before=len(u.pending)
+#             u.update_pending()
+#             after=len(u.pending)
+#             print before, after
 
     if(args.do_diagnostic) : do_diagnostics()
 
